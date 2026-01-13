@@ -20,6 +20,9 @@ let stats = {
   lastReset: new Date().toDateString()
 };
 
+// Track if settings have been loaded
+let settingsLoaded = false;
+
 // Bypassed tabs - tracks which tabs have been bypassed (resets on tab close)
 let bypassedTabs = {}; // { tabId: { domain, bypassTime, lastReminder } }
 
@@ -50,7 +53,26 @@ async function loadSettings() {
   if (data.stats) stats = data.stats;
   if (data.todayUsage) todayUsage = data.todayUsage;
   if (data.timeLimitBypasses) timeLimitBypasses = data.timeLimitBypasses;
+  settingsLoaded = true;
   console.log('Loaded settings:', { blockedSites, siteLimits, todayUsage, stats });
+}
+
+// Ensure settings are loaded before proceeding
+async function ensureSettingsLoaded() {
+  if (!settingsLoaded) {
+    await loadSettings();
+    resetDailyStatsIfNeeded();
+  }
+}
+
+// Get current stats (always fresh from storage to avoid stale data)
+async function getCurrentStats() {
+  const data = await chrome.storage.local.get(['stats']);
+  if (data.stats) {
+    stats = data.stats;
+    return data.stats;
+  }
+  return stats;
 }
 
 // Save settings
@@ -140,9 +162,12 @@ function getTimeLimitInfo(domain) {
 }
 
 // Intercept navigation to blocked sites
-chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   // Only intercept main frame (not iframes)
   if (details.frameId !== 0) return;
+
+  // Ensure settings are loaded
+  await ensureSettingsLoaded();
 
   const domain = getDomain(details.url);
   const timeLimitExceeded = isTimeLimitExceeded(domain);
@@ -157,14 +182,16 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
 
     console.log('Intercepting navigation to:', details.url, timeLimitExceeded ? '(time limit)' : '(blocked)');
 
+    // Get fresh stats from storage
+    const currentStats = await getCurrentStats();
     const timeLimitInfo = getTimeLimitInfo(domain);
 
     // Redirect to intervention page
     const interventionURL = chrome.runtime.getURL('intervention.html') +
       '?url=' + encodeURIComponent(details.url) +
       '&domain=' + encodeURIComponent(domain) +
-      '&todayBypasses=' + stats.todayBypasses +
-      '&weekBypasses=' + stats.weekBypasses +
+      '&todayBypasses=' + currentStats.todayBypasses +
+      '&weekBypasses=' + currentStats.weekBypasses +
       '&reason=' + (timeLimitExceeded ? 'timelimit' : 'blocked') +
       '&limitMinutes=' + timeLimitInfo.limitMinutes +
       '&usedMinutes=' + timeLimitInfo.usedMinutes;
@@ -182,8 +209,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 // Also catch URL bar changes
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (!changeInfo.url) return;
+
+  // Ensure settings are loaded
+  await ensureSettingsLoaded();
 
   const domain = getDomain(changeInfo.url);
   const timeLimitExceeded = isTimeLimitExceeded(domain);
@@ -201,13 +231,15 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // Check if already on intervention page
     if (changeInfo.url.includes('intervention.html')) return;
 
+    // Get fresh stats from storage
+    const currentStats = await getCurrentStats();
     const timeLimitInfo = getTimeLimitInfo(domain);
 
     const interventionURL = chrome.runtime.getURL('intervention.html') +
       '?url=' + encodeURIComponent(changeInfo.url) +
       '&domain=' + encodeURIComponent(domain) +
-      '&todayBypasses=' + stats.todayBypasses +
-      '&weekBypasses=' + stats.weekBypasses +
+      '&todayBypasses=' + currentStats.todayBypasses +
+      '&weekBypasses=' + currentStats.weekBypasses +
       '&reason=' + (timeLimitExceeded ? 'timelimit' : 'blocked') +
       '&limitMinutes=' + timeLimitInfo.limitMinutes +
       '&usedMinutes=' + timeLimitInfo.usedMinutes;
@@ -302,6 +334,8 @@ async function logUsage(domain, seconds) {
   // Check if time limit was just exceeded
   if (isTimeLimitExceeded(cleanDomain)) {
     console.log(`Time limit exceeded for ${cleanDomain}`);
+    // Get fresh stats and redirect tabs
+    const currentStats = await getCurrentStats();
     // Close any tabs on this domain or redirect to intervention
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach((tab) => {
@@ -310,8 +344,8 @@ async function logUsage(domain, seconds) {
           const interventionURL = chrome.runtime.getURL('intervention.html') +
             '?url=' + encodeURIComponent(tab.url) +
             '&domain=' + encodeURIComponent(cleanDomain) +
-            '&todayBypasses=' + stats.todayBypasses +
-            '&weekBypasses=' + stats.weekBypasses +
+            '&todayBypasses=' + currentStats.todayBypasses +
+            '&weekBypasses=' + currentStats.weekBypasses +
             '&reason=timelimit' +
             '&limitMinutes=' + timeLimitInfo.limitMinutes +
             '&usedMinutes=' + timeLimitInfo.usedMinutes;
@@ -647,4 +681,8 @@ function showReminder(domain, minutesWasted, todayBypasses) {
   }, 30000);
 }
 
-console.log('FocusGuard background script loaded');
+// Eagerly load settings when service worker starts
+loadSettings().then(() => {
+  resetDailyStatsIfNeeded();
+  console.log('FocusGuard background script loaded with stats:', stats);
+});
