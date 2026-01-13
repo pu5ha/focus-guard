@@ -283,20 +283,20 @@ function bypassTimeLimit() {
 function showConfirmation(message) {
   const card = document.querySelector('.card');
   card.innerHTML = `
-    <div class="header">
-      <div class="shield-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <div class="header" style="background: linear-gradient(180deg, rgba(74, 222, 128, 0.15) 0%, var(--bg-surface, #141416) 100%);">
+      <div class="shield-icon" style="animation: none; filter: drop-shadow(0 0 12px rgba(74, 222, 128, 0.5));">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="color: #4ade80;">
           <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1 14.59l-3.29-3.3 1.41-1.41L11 13.76l4.88-4.88 1.41 1.41L11 16.59z"/>
         </svg>
       </div>
       <div class="header-text">
-        <h1>Good Choice!</h1>
+        <h1 style="font-family: 'Cormorant Garamond', Georgia, serif;">Good Choice</h1>
         <p class="tagline">${message}</p>
       </div>
     </div>
-    <div class="content" style="padding: 40px;">
-      <p class="motivational-message" style="color: #4ade80;">
-        You're taking control of your focus. Well done!
+    <div class="content" style="padding: 48px 32px;">
+      <p class="motivational-message" style="color: #4ade80; margin-bottom: 0; font-size: 1.4rem;">
+        You're taking control of your focus.
       </p>
     </div>
   `;
