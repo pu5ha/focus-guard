@@ -28,6 +28,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize Core Data
         DataService.shared.initialize()
 
+        // Clean up any duplicate blocks from previous sessions
+        DataService.shared.cleanupDuplicateBlocks()
+
         // Initialize the blocking service
         BlockingService.shared.startMonitoring()
 

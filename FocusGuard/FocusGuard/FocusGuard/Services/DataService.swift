@@ -55,10 +55,41 @@ class DataService {
     }
 
     func createScheduledBlock(url: String, schedule: BlockSchedule) -> WebsiteBlock {
+        // Check if an active scheduled block already exists for this URL
+        let activeBlocks = getActiveBlocks()
+        if let existing = activeBlocks.first(where: { $0.url == url && $0.isScheduled }) {
+            return existing
+        }
+
         let block = WebsiteBlock(context: context, url: url, duration: nil, isScheduled: true, scheduleId: schedule.id)
         save()
         NotificationCenter.default.post(name: .blocksDidChange, object: nil)
         return block
+    }
+
+    func cleanupDuplicateBlocks() {
+        let activeBlocks = getActiveBlocks()
+        var seenURLs: Set<String> = []
+        var blocksToDelete: [WebsiteBlock] = []
+
+        for block in activeBlocks {
+            if seenURLs.contains(block.url) {
+                blocksToDelete.append(block)
+            } else {
+                seenURLs.insert(block.url)
+            }
+        }
+
+        for block in blocksToDelete {
+            context.delete(block)
+            print("🧹 Removed duplicate block for \(block.url)")
+        }
+
+        if !blocksToDelete.isEmpty {
+            save()
+            NotificationCenter.default.post(name: .blocksDidChange, object: nil)
+            print("🧹 Cleaned up \(blocksToDelete.count) duplicate blocks")
+        }
     }
 
     func deactivateBlock(_ block: WebsiteBlock) {
