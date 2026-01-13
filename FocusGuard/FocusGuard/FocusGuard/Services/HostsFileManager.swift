@@ -14,9 +14,10 @@ class HostsFileManager {
     private let backupFilePath = "/tmp/hosts.backup"
     private let focusGuardMarker = "# FocusGuard Managed"
 
-    // Use helper if installed, otherwise fall back to AppleScript
+    // Disable helper for now since XPC isn't working properly
+    // TODO: Fix XPC helper setup and re-enable
     private var useHelper: Bool {
-        return HelperClient.shared.isInstalled
+        return false // HelperClient.shared.isInstalled
     }
 
     private init() {}

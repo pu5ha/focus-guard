@@ -116,16 +116,31 @@ class BlockingService {
 
     private func applyAllActiveBlocks() {
         let activeBlocks = DataService.shared.getActiveBlocks()
+        let currentlyBlocked = HostsFileManager.shared.getBlockedURLs()
+        var appliedCount = 0
 
         for block in activeBlocks {
-            // Re-apply active blocks to hosts file
-            if !HostsFileManager.shared.blockURL(block.url) {
-                print("⚠️ Failed to re-apply block for \(block.url)")
+            // Only re-apply if not already blocked in hosts file
+            let isAlreadyBlocked = currentlyBlocked.contains(block.url) ||
+                                   currentlyBlocked.contains("www.\(block.url)")
+
+            if isAlreadyBlocked {
+                print("✅ Block already active for \(block.url)")
+            } else {
+                // Re-apply active blocks to hosts file
+                if HostsFileManager.shared.blockURL(block.url) {
+                    appliedCount += 1
+                } else {
+                    print("⚠️ Failed to re-apply block for \(block.url)")
+                }
             }
         }
 
+        if appliedCount > 0 {
+            print("✅ Re-applied \(appliedCount) blocks")
+        }
         if !activeBlocks.isEmpty {
-            print("✅ Re-applied \(activeBlocks.count) active blocks")
+            print("✅ \(activeBlocks.count) active blocks verified")
         }
     }
 
