@@ -12,20 +12,34 @@ struct ScheduleView: View {
     @State private var showingAddSheet = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
-                Text("Scheduled Blocks")
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Schedules")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .textCase(.uppercase)
+                }
 
                 Spacer()
 
                 Button(action: { showingAddSheet = true }) {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(.blue)
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Add")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.purple)
+                    .cornerRadius(6)
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.horizontal, 4)
 
             if schedules.isEmpty {
                 emptyState
@@ -45,24 +59,42 @@ struct ScheduleView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 32))
-                .foregroundColor(.gray)
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.1))
+                    .frame(width: 70, height: 70)
 
-            Text("No Scheduled Blocks")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            Text("Create a schedule to automatically block sites at specific times")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button("Add Schedule") {
-                showingAddSheet = true
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundColor(.purple.opacity(0.7))
             }
-            .buttonStyle(.borderedProminent)
+
+            VStack(spacing: 6) {
+                Text("No Schedules Yet")
+                    .font(.system(size: 15, weight: .semibold))
+
+                Text("Automatically block distracting sites\nduring work hours")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+            }
+
+            Button(action: { showingAddSheet = true }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14))
+                    Text("Create Schedule")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.purple)
+                .cornerRadius(10)
+            }
+            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
@@ -70,7 +102,7 @@ struct ScheduleView: View {
 
     private var scheduleList: some View {
         ScrollView {
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 ForEach(schedules, id: \.id) { schedule in
                     ScheduleRowView(schedule: schedule, onToggle: {
                         ScheduleManager.shared.toggleSchedule(schedule)
@@ -93,69 +125,127 @@ struct ScheduleRowView: View {
     let schedule: BlockSchedule
     let onToggle: () -> Void
     let onDelete: () -> Void
+    @State private var isHovered = false
+
+    private var isActive: Bool {
+        ScheduleManager.shared.isScheduleActive(schedule)
+    }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(schedule.url)
-                        .font(.system(.body, design: .monospaced))
-                        .fontWeight(.medium)
+        HStack(spacing: 12) {
+            // Icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.purple.opacity(0.2), Color.purple.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 44, height: 44)
 
-                    if ScheduleManager.shared.isScheduleActive(schedule) {
-                        Text("ACTIVE")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green)
-                            .cornerRadius(4)
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.purple)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                // URL and status
+                HStack(spacing: 8) {
+                    Text(schedule.url)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    if isActive {
+                        HStack(spacing: 3) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                            Text("LIVE")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.green.opacity(0.15))
+                        .cornerRadius(4)
                     }
                 }
 
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .font(.caption)
-                    Text("\(formatTime(hour: Int(schedule.startHour), minute: Int(schedule.startMinute))) - \(formatTime(hour: Int(schedule.endHour), minute: Int(schedule.endMinute)))")
-                        .font(.caption)
-                }
-                .foregroundColor(.secondary)
+                // Time range
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.purple.opacity(0.7))
 
-                HStack(spacing: 4) {
+                    Text("\(formatTime(hour: Int(schedule.startHour), minute: Int(schedule.startMinute)))")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.8))
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.secondary)
+
+                    Text("\(formatTime(hour: Int(schedule.endHour), minute: Int(schedule.endMinute)))")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.8))
+                }
+
+                // Days
+                HStack(spacing: 3) {
                     let dayLabels = ["S", "M", "T", "W", "T", "F", "S"]
                     ForEach(0..<7, id: \.self) { index in
-                        let isActive = isDayActive(schedule: schedule, index: index)
+                        let dayActive = isDayActive(schedule: schedule, index: index)
 
                         Text(dayLabels[index])
-                            .font(.caption2)
-                            .fontWeight(isActive ? .bold : .regular)
-                            .foregroundColor(isActive ? .blue : .gray)
-                            .frame(width: 18, height: 18)
-                            .background(isActive ? Color.blue.opacity(0.2) : Color.clear)
-                            .cornerRadius(4)
+                            .font(.system(size: 9, weight: dayActive ? .bold : .medium))
+                            .foregroundColor(dayActive ? .white : .gray)
+                            .frame(width: 20, height: 20)
+                            .background(
+                                Circle()
+                                    .fill(dayActive ? Color.purple : Color.gray.opacity(0.15))
+                            )
                     }
                 }
             }
 
             Spacer()
 
-            Toggle("", isOn: Binding(
-                get: { schedule.isEnabled },
-                set: { _ in onToggle() }
-            ))
-            .toggleStyle(.switch)
-            .labelsHidden()
+            VStack(spacing: 8) {
+                Toggle("", isOn: Binding(
+                    get: { schedule.isEnabled },
+                    set: { _ in onToggle() }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .scaleEffect(0.8)
 
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .foregroundColor(.red)
+                Button(action: onDelete) {
+                    Image(systemName: "trash.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(isHovered ? .red : .gray.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isHovered = hovering
+                    }
+                }
             }
-            .buttonStyle(.plain)
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(8)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(schedule.isEnabled ? Color.purple.opacity(0.05) : Color(NSColor.controlBackgroundColor))
+                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(schedule.isEnabled ? Color.purple.opacity(0.2) : Color.gray.opacity(0.1), lineWidth: 1)
+        )
+        .opacity(schedule.isEnabled ? 1 : 0.7)
     }
 
     private func formatTime(hour: Int, minute: Int) -> String {
