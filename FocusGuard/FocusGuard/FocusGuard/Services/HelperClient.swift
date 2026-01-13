@@ -110,8 +110,10 @@ class HelperClient {
 
     // MARK: - Public API
 
+    // Helper is disabled due to XPC issues - always return false
+    // TODO: Fix XPC helper and re-enable
     var isInstalled: Bool {
-        return isHelperInstalled
+        return false // isHelperInstalled
     }
 
     func blockURLs(_ urls: [String], completion: @escaping (Bool, String?) -> Void) {
