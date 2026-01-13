@@ -123,11 +123,11 @@ struct ScheduleRowView: View {
                 .foregroundColor(.secondary)
 
                 HStack(spacing: 4) {
-                    ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
-                        let index = ["S", "M", "T", "W", "T", "F", "S"].firstIndex(of: day)!
+                    let dayLabels = ["S", "M", "T", "W", "T", "F", "S"]
+                    ForEach(0..<7, id: \.self) { index in
                         let isActive = isDayActive(schedule: schedule, index: index)
 
-                        Text(day)
+                        Text(dayLabels[index])
                             .font(.caption2)
                             .fontWeight(isActive ? .bold : .regular)
                             .foregroundColor(isActive ? .blue : .gray)
