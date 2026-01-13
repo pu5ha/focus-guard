@@ -172,6 +172,7 @@ class BlockingService {
 
 extension TimeInterval {
     static let oneHour: TimeInterval = 3600
+    static let twoHours: TimeInterval = 3600 * 2
     static let fourHours: TimeInterval = 3600 * 4
     static let restOfDay: TimeInterval = {
         let calendar = Calendar.current

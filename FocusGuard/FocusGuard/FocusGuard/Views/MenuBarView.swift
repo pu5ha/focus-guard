@@ -165,6 +165,10 @@ struct MenuBarView: View {
         .padding(.vertical, 40)
     }
 
+    @State private var showCustomDuration = false
+    @State private var customHours: Int = 1
+    @State private var customMinutes: Int = 0
+
     private var quickActionsView: some View {
         VStack(spacing: 8) {
             // URL input
@@ -183,8 +187,58 @@ struct MenuBarView: View {
             // Quick block buttons
             HStack(spacing: 8) {
                 QuickBlockButton(title: "1 Hour", duration: .oneHour, url: $viewModel.newURL)
-                QuickBlockButton(title: "4 Hours", duration: .fourHours, url: $viewModel.newURL)
-                QuickBlockButton(title: "Rest of Day", duration: .restOfDay, url: $viewModel.newURL)
+                QuickBlockButton(title: "2 Hours", duration: .twoHours, url: $viewModel.newURL)
+
+                Button("Custom") {
+                    showCustomDuration = true
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.newURL.isEmpty)
+            }
+
+            // Custom duration picker
+            if showCustomDuration && !viewModel.newURL.isEmpty {
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("Duration:")
+                            .font(.caption)
+
+                        Picker("Hours", selection: $customHours) {
+                            ForEach(0..<24, id: \.self) { h in
+                                Text("\(h)h").tag(h)
+                            }
+                        }
+                        .frame(width: 70)
+
+                        Picker("Minutes", selection: $customMinutes) {
+                            ForEach([0, 15, 30, 45], id: \.self) { m in
+                                Text("\(m)m").tag(m)
+                            }
+                        }
+                        .frame(width: 70)
+                    }
+
+                    HStack {
+                        Button("Cancel") {
+                            showCustomDuration = false
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button("Block") {
+                            let duration = TimeInterval(customHours * 3600 + customMinutes * 60)
+                            if duration > 0 {
+                                _ = BlockingService.shared.activateBlock(url: viewModel.newURL, duration: duration)
+                                viewModel.newURL = ""
+                            }
+                            showCustomDuration = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(customHours == 0 && customMinutes == 0)
+                    }
+                }
+                .padding(8)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
             }
         }
         .padding()
