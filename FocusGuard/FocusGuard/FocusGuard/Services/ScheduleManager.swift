@@ -68,6 +68,12 @@ class ScheduleManager {
                             // Already blocked, just track it without prompting
                             let block = DataService.shared.createScheduledBlock(url: schedule.url, schedule: schedule)
                             activeScheduledBlocks[scheduleId] = block
+
+                            // Update stats for scheduled block
+                            let stats = DataService.shared.getTodayStats()
+                            stats.incrementBlockActivation()
+                            DataService.shared.save()
+
                             print("Scheduled block already active in hosts: \(schedule.url)")
                         } else {
                             activateScheduledBlock(schedule: schedule)
@@ -119,6 +125,11 @@ class ScheduleManager {
         activeScheduledBlocks[scheduleId] = block
 
         if HostsFileManager.shared.blockURL(schedule.url) {
+            // Update stats for scheduled block
+            let stats = DataService.shared.getTodayStats()
+            stats.incrementBlockActivation()
+            DataService.shared.save()
+
             print("Scheduled block activated: \(schedule.url) until \(schedule.endHour):\(String(format: "%02d", schedule.endMinute))")
             NotificationCenter.default.post(name: .scheduledBlockActivated, object: schedule)
         } else {

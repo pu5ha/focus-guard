@@ -16,13 +16,13 @@ All Phase 1 code has been written. Now we need to create the Xcode project.
    - Interface: **SwiftUI**
    - Language: **Swift**
    - ✅ Check "Use Core Data"
-   - Location: `/Users/jasonchaskin/Desktop/productivity/FocusGuard`
+   - Location: Choose your preferred location
 
 ## Step 2: Add Source Files to Project
 
 1. In Xcode, right-click on "FocusGuard" folder in the navigator
 2. Choose "Add Files to FocusGuard..."
-3. Navigate to `/Users/jasonchaskin/Desktop/productivity/FocusGuard/FocusGuard/`
+3. Navigate to the `FocusGuard/FocusGuard/` folder in your project
 4. Select these folders:
    - `Models` folder
    - `Views` folder

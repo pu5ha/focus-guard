@@ -3,7 +3,15 @@
 
 // Blocked sites list (synced from native app)
 let blockedSites = ['x.com', 'twitter.com'];
-let siteLimits = {}; // { 'x.com': { dailyMinutes: 15, usedMinutes: 0 } }
+
+// Site time limits: { 'x.com': { dailyMinutes: 15 } }
+let siteLimits = {};
+
+// Today's usage: { 'x.com': 450 } (seconds)
+let todayUsage = {};
+
+// Time limit bypasses: { 'x.com': { until: timestamp, extraMinutes: 15 } }
+let timeLimitBypasses = {};
 
 // Stats
 let stats = {
@@ -36,16 +44,18 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Load settings from storage
 async function loadSettings() {
-  const data = await chrome.storage.local.get(['blockedSites', 'siteLimits', 'stats']);
+  const data = await chrome.storage.local.get(['blockedSites', 'siteLimits', 'stats', 'todayUsage', 'timeLimitBypasses']);
   if (data.blockedSites) blockedSites = data.blockedSites;
   if (data.siteLimits) siteLimits = data.siteLimits;
   if (data.stats) stats = data.stats;
-  console.log('Loaded settings:', { blockedSites, stats });
+  if (data.todayUsage) todayUsage = data.todayUsage;
+  if (data.timeLimitBypasses) timeLimitBypasses = data.timeLimitBypasses;
+  console.log('Loaded settings:', { blockedSites, siteLimits, todayUsage, stats });
 }
 
 // Save settings
 async function saveSettings() {
-  await chrome.storage.local.set({ blockedSites, siteLimits, stats });
+  await chrome.storage.local.set({ blockedSites, siteLimits, stats, todayUsage, timeLimitBypasses });
 }
 
 // Reset daily stats at midnight
@@ -55,6 +65,10 @@ function resetDailyStatsIfNeeded() {
     stats.weekBypasses += stats.todayBypasses;
     stats.todayBypasses = 0;
     stats.lastReset = today;
+
+    // Reset daily usage tracking
+    todayUsage = {};
+    timeLimitBypasses = {};
 
     // Reset weekly on Sunday
     if (new Date().getDay() === 0) {
@@ -89,26 +103,71 @@ function getDomain(url) {
   }
 }
 
+// Check if site has exceeded its daily time limit
+function isTimeLimitExceeded(domain) {
+  if (!domain) return false;
+
+  const cleanDomain = domain.toLowerCase().replace('www.', '');
+  const limit = siteLimits[cleanDomain];
+
+  if (!limit || !limit.dailyMinutes) return false;
+
+  const usedSeconds = todayUsage[cleanDomain] || 0;
+  const usedMinutes = usedSeconds / 60;
+
+  // Check if there's an active bypass
+  const bypass = timeLimitBypasses[cleanDomain];
+  if (bypass && bypass.until > Date.now()) {
+    return false; // Bypass is active
+  }
+
+  return usedMinutes >= limit.dailyMinutes;
+}
+
+// Get time limit info for a domain
+function getTimeLimitInfo(domain) {
+  const cleanDomain = domain.toLowerCase().replace('www.', '');
+  const limit = siteLimits[cleanDomain];
+  const usedSeconds = todayUsage[cleanDomain] || 0;
+
+  return {
+    hasLimit: !!(limit && limit.dailyMinutes),
+    limitMinutes: limit?.dailyMinutes || 0,
+    usedMinutes: Math.round(usedSeconds / 60),
+    usedSeconds: usedSeconds,
+    remainingMinutes: limit ? Math.max(0, limit.dailyMinutes - (usedSeconds / 60)) : 0
+  };
+}
+
 // Intercept navigation to blocked sites
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   // Only intercept main frame (not iframes)
   if (details.frameId !== 0) return;
 
-  if (isBlockedURL(details.url)) {
-    // Check if this tab has been bypassed
-    if (bypassedTabs[details.tabId]) {
+  const domain = getDomain(details.url);
+  const timeLimitExceeded = isTimeLimitExceeded(domain);
+  const isBlocked = isBlockedURL(details.url);
+
+  if (isBlocked || timeLimitExceeded) {
+    // Check if this tab has been bypassed (only for regular blocks, not time limits)
+    if (bypassedTabs[details.tabId] && !timeLimitExceeded) {
       console.log('Tab already bypassed, allowing:', details.url);
       return; // Allow navigation
     }
 
-    console.log('Intercepting navigation to:', details.url);
+    console.log('Intercepting navigation to:', details.url, timeLimitExceeded ? '(time limit)' : '(blocked)');
+
+    const timeLimitInfo = getTimeLimitInfo(domain);
 
     // Redirect to intervention page
     const interventionURL = chrome.runtime.getURL('intervention.html') +
       '?url=' + encodeURIComponent(details.url) +
-      '&domain=' + encodeURIComponent(getDomain(details.url)) +
+      '&domain=' + encodeURIComponent(domain) +
       '&todayBypasses=' + stats.todayBypasses +
-      '&weekBypasses=' + stats.weekBypasses;
+      '&weekBypasses=' + stats.weekBypasses +
+      '&reason=' + (timeLimitExceeded ? 'timelimit' : 'blocked') +
+      '&limitMinutes=' + timeLimitInfo.limitMinutes +
+      '&usedMinutes=' + timeLimitInfo.usedMinutes;
 
     chrome.tabs.update(details.tabId, { url: interventionURL });
   }
@@ -124,9 +183,15 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // Also catch URL bar changes
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.url && isBlockedURL(changeInfo.url)) {
-    // Check if this tab has been bypassed
-    if (bypassedTabs[tabId]) {
+  if (!changeInfo.url) return;
+
+  const domain = getDomain(changeInfo.url);
+  const timeLimitExceeded = isTimeLimitExceeded(domain);
+  const isBlocked = isBlockedURL(changeInfo.url);
+
+  if (isBlocked || timeLimitExceeded) {
+    // Check if this tab has been bypassed (only for regular blocks, not time limits)
+    if (bypassedTabs[tabId] && !timeLimitExceeded) {
       console.log('Tab already bypassed, allowing URL change:', changeInfo.url);
       return;
     }
@@ -136,11 +201,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // Check if already on intervention page
     if (changeInfo.url.includes('intervention.html')) return;
 
+    const timeLimitInfo = getTimeLimitInfo(domain);
+
     const interventionURL = chrome.runtime.getURL('intervention.html') +
       '?url=' + encodeURIComponent(changeInfo.url) +
-      '&domain=' + encodeURIComponent(getDomain(changeInfo.url)) +
+      '&domain=' + encodeURIComponent(domain) +
       '&todayBypasses=' + stats.todayBypasses +
-      '&weekBypasses=' + stats.weekBypasses;
+      '&weekBypasses=' + stats.weekBypasses +
+      '&reason=' + (timeLimitExceeded ? 'timelimit' : 'blocked') +
+      '&limitMinutes=' + timeLimitInfo.limitMinutes +
+      '&usedMinutes=' + timeLimitInfo.usedMinutes;
 
     chrome.tabs.update(tabId, { url: interventionURL });
   }
@@ -206,7 +276,12 @@ function stopTimeTracking() {
 }
 
 async function logUsage(domain, seconds) {
-  // Store usage data
+  // Update today's usage for time limits
+  const cleanDomain = domain.toLowerCase().replace('www.', '');
+  if (!todayUsage[cleanDomain]) todayUsage[cleanDomain] = 0;
+  todayUsage[cleanDomain] += seconds;
+
+  // Store usage data (historical)
   const data = await chrome.storage.local.get(['usage']);
   const usage = data.usage || {};
   const today = new Date().toDateString();
@@ -216,13 +291,35 @@ async function logUsage(domain, seconds) {
 
   usage[today][domain] += seconds;
 
-  await chrome.storage.local.set({ usage });
+  await chrome.storage.local.set({ usage, todayUsage });
 
   // Try to send to native app
   sendToNativeApp({
     type: 'USAGE_UPDATE',
     payload: { domain, seconds, timestamp: new Date().toISOString() }
   });
+
+  // Check if time limit was just exceeded
+  if (isTimeLimitExceeded(cleanDomain)) {
+    console.log(`Time limit exceeded for ${cleanDomain}`);
+    // Close any tabs on this domain or redirect to intervention
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach((tab) => {
+        if (tab.url && getDomain(tab.url) === cleanDomain) {
+          const timeLimitInfo = getTimeLimitInfo(cleanDomain);
+          const interventionURL = chrome.runtime.getURL('intervention.html') +
+            '?url=' + encodeURIComponent(tab.url) +
+            '&domain=' + encodeURIComponent(cleanDomain) +
+            '&todayBypasses=' + stats.todayBypasses +
+            '&weekBypasses=' + stats.weekBypasses +
+            '&reason=timelimit' +
+            '&limitMinutes=' + timeLimitInfo.limitMinutes +
+            '&usedMinutes=' + timeLimitInfo.usedMinutes;
+          chrome.tabs.update(tab.id, { url: interventionURL });
+        }
+      });
+    });
+  }
 }
 
 // Message handling from intervention page and popup
@@ -237,13 +334,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true, tabId });
       break;
 
+    case 'TIME_LIMIT_BYPASS':
+      // Bypass time limit for extra minutes
+      handleTimeLimitBypass(message.domain, message.extraMinutes);
+      sendResponse({ success: true });
+      break;
+
     case 'BLOCK_NOW':
       handleBlockNow(message.domain, message.duration);
       sendResponse({ success: true });
       break;
 
     case 'GET_STATS':
-      sendResponse({ stats, blockedSites });
+      sendResponse({ stats, blockedSites, siteLimits, todayUsage });
       break;
 
     case 'ADD_BLOCK':
@@ -256,9 +359,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
 
+    case 'SET_TIME_LIMIT':
+      setTimeLimit(message.domain, message.minutes);
+      sendResponse({ success: true });
+      break;
+
+    case 'REMOVE_TIME_LIMIT':
+      removeTimeLimit(message.domain);
+      sendResponse({ success: true });
+      break;
+
     case 'GET_USAGE':
       getUsageStats().then(usage => sendResponse({ usage }));
       return true; // async response
+
+    case 'GET_TIME_LIMIT_INFO':
+      const info = getTimeLimitInfo(message.domain);
+      sendResponse(info);
+      break;
   }
 });
 
@@ -320,6 +438,46 @@ function removeBlockedSite(domain) {
   blockedSites = blockedSites.filter(site => site !== cleanDomain);
   saveSettings();
   console.log('Removed blocked site:', cleanDomain);
+}
+
+function handleTimeLimitBypass(domain, extraMinutes) {
+  const cleanDomain = domain.toLowerCase().replace('www.', '');
+
+  // Grant extra time (bypass until now + extraMinutes)
+  timeLimitBypasses[cleanDomain] = {
+    until: Date.now() + (extraMinutes * 60 * 1000),
+    extraMinutes: extraMinutes
+  };
+
+  stats.todayBypasses++;
+  saveSettings();
+
+  console.log(`Time limit bypass for ${cleanDomain}: ${extraMinutes} more minutes`);
+
+  // Send to native app
+  sendToNativeApp({
+    type: 'TIME_LIMIT_BYPASS',
+    payload: {
+      domain: cleanDomain,
+      extraMinutes,
+      todayCount: stats.todayBypasses,
+      timestamp: new Date().toISOString()
+    }
+  });
+}
+
+function setTimeLimit(domain, minutes) {
+  const cleanDomain = domain.toLowerCase().replace('www.', '');
+  siteLimits[cleanDomain] = { dailyMinutes: minutes };
+  saveSettings();
+  console.log(`Set time limit for ${cleanDomain}: ${minutes} minutes/day`);
+}
+
+function removeTimeLimit(domain) {
+  const cleanDomain = domain.toLowerCase().replace('www.', '');
+  delete siteLimits[cleanDomain];
+  saveSettings();
+  console.log(`Removed time limit for ${cleanDomain}`);
 }
 
 async function getUsageStats() {

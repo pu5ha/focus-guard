@@ -6,6 +6,17 @@ const targetURL = urlParams.get('url');
 const domain = urlParams.get('domain');
 const todayBypasses = parseInt(urlParams.get('todayBypasses')) || 0;
 const weekBypasses = parseInt(urlParams.get('weekBypasses')) || 0;
+const reason = urlParams.get('reason') || 'blocked'; // 'blocked' or 'timelimit'
+const limitMinutes = parseInt(urlParams.get('limitMinutes')) || 0;
+const usedMinutes = parseInt(urlParams.get('usedMinutes')) || 0;
+
+// Bypass phrases that escalate based on bypass count
+const bypassPhrases = {
+  low: "I am choosing to waste my time",
+  medium: "I am actively choosing distraction over my goals",
+  high: "I am sabotaging my own productivity again",
+  critical: "I refuse to respect my own boundaries"
+};
 
 // Motivational messages based on bypass count
 const messages = {
@@ -39,6 +50,9 @@ const messages = {
   ]
 };
 
+// Selected extra minutes for time limit bypass
+let selectedExtraMinutes = 5;
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
   // Set domain
@@ -48,12 +62,20 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('todayBypasses').textContent = todayBypasses;
   document.getElementById('weekBypasses').textContent = weekBypasses;
 
+  // Handle time limit vs blocked
+  if (reason === 'timelimit') {
+    setupTimeLimitMode();
+  }
+
   // Set motivational message based on bypass count
   setMotivationalMessage();
 
+  // Set bypass phrase based on bypass count
+  setBypassPhrase();
+
   // Add shake animation if high bypass count
   if (todayBypasses >= 5) {
-    document.querySelector('.stats-container').classList.add('high-bypass-warning');
+    document.querySelector('.content').classList.add('high-bypass-warning');
   }
 
   // Set up button handlers
@@ -63,21 +85,44 @@ document.addEventListener('DOMContentLoaded', () => {
   updateStreakInfo();
 });
 
+function setupTimeLimitMode() {
+  // Update label
+  const reasonLabel = document.getElementById('reasonLabel');
+  reasonLabel.textContent = 'TIME LIMIT REACHED';
+  reasonLabel.classList.add('time-limit');
+
+  // Show time limit info
+  const timeLimitInfo = document.getElementById('timeLimitInfo');
+  timeLimitInfo.style.display = 'block';
+
+  document.getElementById('timeUsed').textContent = usedMinutes;
+  document.getElementById('timeLimit').textContent = limitMinutes;
+
+  // Set progress bar
+  const progress = Math.min(100, (usedMinutes / limitMinutes) * 100);
+  document.getElementById('timeLimitProgress').style.width = progress + '%';
+}
+
+function getBypassLevel() {
+  if (todayBypasses >= 10) return 'critical';
+  if (todayBypasses >= 5) return 'high';
+  if (todayBypasses >= 2) return 'medium';
+  return 'low';
+}
+
 function setMotivationalMessage() {
-  let messageList;
-
-  if (todayBypasses >= 10) {
-    messageList = messages.critical;
-  } else if (todayBypasses >= 5) {
-    messageList = messages.high;
-  } else if (todayBypasses >= 2) {
-    messageList = messages.medium;
-  } else {
-    messageList = messages.low;
-  }
-
+  const level = getBypassLevel();
+  const messageList = messages[level];
   const randomMessage = messageList[Math.floor(Math.random() * messageList.length)];
   document.getElementById('motivationalMessage').textContent = randomMessage;
+}
+
+function setBypassPhrase() {
+  const level = getBypassLevel();
+  const phrase = bypassPhrases[level];
+
+  document.getElementById('bypassPhrase').textContent = phrase;
+  document.getElementById('timeBypassPhrase').textContent = phrase;
 }
 
 function setupButtons() {
@@ -95,9 +140,96 @@ function setupButtons() {
     blockSite(duration);
   });
 
-  // Bypass (continue anyway)
-  document.getElementById('bypassBtn').addEventListener('click', () => {
+  // Show bypass section
+  document.getElementById('showBypassBtn').addEventListener('click', () => {
+    document.getElementById('mainActions').style.display = 'none';
+
+    if (reason === 'timelimit') {
+      document.getElementById('timeBypassSection').style.display = 'block';
+      document.getElementById('timeBypassInput').focus();
+    } else {
+      document.getElementById('bypassSection').style.display = 'block';
+      document.getElementById('bypassInput').focus();
+    }
+  });
+
+  // Cancel bypass
+  document.getElementById('cancelBypassBtn').addEventListener('click', () => {
+    document.getElementById('bypassSection').style.display = 'none';
+    document.getElementById('mainActions').style.display = 'flex';
+    document.getElementById('bypassInput').value = '';
+  });
+
+  // Cancel time bypass
+  document.getElementById('cancelTimeBypassBtn').addEventListener('click', () => {
+    document.getElementById('timeBypassSection').style.display = 'none';
+    document.getElementById('mainActions').style.display = 'flex';
+    document.getElementById('timeBypassInput').value = '';
+  });
+
+  // Bypass input validation
+  const bypassInput = document.getElementById('bypassInput');
+  const bypassBtn = document.getElementById('bypassBtn');
+  const bypassPhrase = document.getElementById('bypassPhrase').textContent.toLowerCase();
+
+  bypassInput.addEventListener('input', () => {
+    const match = bypassInput.value.toLowerCase().trim() === bypassPhrase;
+    bypassBtn.disabled = !match;
+
+    if (match) {
+      bypassInput.classList.add('match');
+    } else {
+      bypassInput.classList.remove('match');
+    }
+  });
+
+  // Time bypass input validation
+  const timeBypassInput = document.getElementById('timeBypassInput');
+  const timeBypassBtn = document.getElementById('timeBypassBtn');
+  const timeBypassPhrase = document.getElementById('timeBypassPhrase').textContent.toLowerCase();
+
+  timeBypassInput.addEventListener('input', () => {
+    const match = timeBypassInput.value.toLowerCase().trim() === timeBypassPhrase;
+    timeBypassBtn.disabled = !match;
+
+    if (match) {
+      timeBypassInput.classList.add('match');
+    } else {
+      timeBypassInput.classList.remove('match');
+    }
+  });
+
+  // Time option selection
+  document.querySelectorAll('.time-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.time-option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedExtraMinutes = parseInt(btn.dataset.minutes);
+      document.getElementById('selectedMinutes').textContent = selectedExtraMinutes;
+    });
+  });
+
+  // Bypass button (regular)
+  bypassBtn.addEventListener('click', () => {
     bypassBlock();
+  });
+
+  // Time bypass button
+  timeBypassBtn.addEventListener('click', () => {
+    bypassTimeLimit();
+  });
+
+  // Allow Enter key to submit if phrase matches
+  bypassInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !bypassBtn.disabled) {
+      bypassBlock();
+    }
+  });
+
+  timeBypassInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !timeBypassBtn.disabled) {
+      bypassTimeLimit();
+    }
   });
 }
 
@@ -114,9 +246,7 @@ function blockSite(duration) {
 
       // Close tab or redirect to new tab page
       setTimeout(() => {
-        chrome.tabs.getCurrent((tab) => {
-          chrome.tabs.update(tab.id, { url: 'about:newtab' });
-        });
+        window.location.href = 'about:newtab';
       }, 1500);
     }
   });
@@ -136,16 +266,39 @@ function bypassBlock() {
   });
 }
 
+function bypassTimeLimit() {
+  // Send time limit bypass to background
+  chrome.runtime.sendMessage({
+    type: 'TIME_LIMIT_BYPASS',
+    domain: domain,
+    extraMinutes: selectedExtraMinutes
+  }, (response) => {
+    if (response && response.success) {
+      // Redirect to original URL
+      window.location.href = targetURL;
+    }
+  });
+}
+
 function showConfirmation(message) {
-  const container = document.querySelector('.container');
-  container.innerHTML = `
-    <div class="shield-icon" style="color: #68d391;">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1 14.59l-3.29-3.3 1.41-1.41L11 13.76l4.88-4.88 1.41 1.41L11 16.59z"/>
-      </svg>
+  const card = document.querySelector('.card');
+  card.innerHTML = `
+    <div class="header">
+      <div class="shield-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1 14.59l-3.29-3.3 1.41-1.41L11 13.76l4.88-4.88 1.41 1.41L11 16.59z"/>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>Good Choice!</h1>
+        <p class="tagline">${message}</p>
+      </div>
     </div>
-    <h1 style="color: #68d391;">Good choice!</h1>
-    <p class="subtitle">${message}</p>
+    <div class="content" style="padding: 40px;">
+      <p class="motivational-message" style="color: #4ade80;">
+        You're taking control of your focus. Well done!
+      </p>
+    </div>
   `;
 }
 

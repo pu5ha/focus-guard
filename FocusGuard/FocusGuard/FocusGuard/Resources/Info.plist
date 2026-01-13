@@ -27,7 +27,7 @@
     <key>SMPrivilegedExecutables</key>
     <dict>
         <key>com.focusguard.helper</key>
-        <string>identifier "com.focusguard.helper" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development: jc22sports@aol.com (5R5QUFC8UD)"</string>
+        <string>identifier "com.focusguard.helper" and anchor apple generic</string>
     </dict>
 </dict>
 </plist>

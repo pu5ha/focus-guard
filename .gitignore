@@ -25,3 +25,10 @@ Carthage/Build/
 *.swp
 *.swo
 *~
+
+# Profiling data
+*.profraw
+*.profdata
+
+# Claude Code
+.claude/

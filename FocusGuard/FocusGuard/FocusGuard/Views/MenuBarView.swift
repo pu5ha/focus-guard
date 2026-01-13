@@ -24,13 +24,18 @@ struct MenuBarView: View {
             Divider()
 
             // Tab picker
-            Picker("", selection: $selectedTab) {
-                Text("Blocks").tag(0)
-                Text("Schedules").tag(1)
-                Text("Settings").tag(2)
+            HStack(spacing: 4) {
+                TabButton(title: "Blocks", icon: "shield.fill", isSelected: selectedTab == 0) {
+                    selectedTab = 0
+                }
+                TabButton(title: "Schedules", icon: "calendar.badge.clock", isSelected: selectedTab == 1) {
+                    selectedTab = 1
+                }
+                TabButton(title: "Settings", icon: "gearshape.fill", isSelected: selectedTab == 2) {
+                    selectedTab = 2
+                }
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
+            .padding(.horizontal, 12)
             .padding(.vertical, 8)
 
             // Content based on selected tab
@@ -56,12 +61,13 @@ struct MenuBarView: View {
             // App icon with gradient background
             ZStack {
                 LinearGradient(
-                    colors: [.blue, .blue.opacity(0.7)],
+                    colors: [.purple, .purple.opacity(0.7)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                .frame(width: 36, height: 36)
+                .frame(width: 38, height: 38)
                 .cornerRadius(10)
+                .shadow(color: .purple.opacity(0.3), radius: 4, x: 0, y: 2)
 
                 Image(systemName: "shield.fill")
                     .font(.system(size: 18, weight: .semibold))
@@ -71,9 +77,10 @@ struct MenuBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("FocusGuard")
                     .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.primary)
                 Text("Stay focused, stay productive")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.purple.opacity(0.7))
             }
 
             Spacer()
@@ -81,7 +88,7 @@ struct MenuBarView: View {
             Button(action: { NSApplication.shared.terminate(nil) }) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 18))
-                    .foregroundColor(.gray.opacity(0.6))
+                    .foregroundColor(.gray.opacity(0.5))
             }
             .buttonStyle(.plain)
             .onHover { hovering in
@@ -95,11 +102,14 @@ struct MenuBarView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .background(
-            LinearGradient(
-                colors: [Color(NSColor.controlBackgroundColor), Color(NSColor.controlBackgroundColor).opacity(0.95)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            ZStack {
+                Color(NSColor.controlBackgroundColor)
+                LinearGradient(
+                    colors: [.purple.opacity(0.03), .clear],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
         )
     }
 
@@ -364,106 +374,181 @@ struct SettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Launch at Login
-                GroupBox("Startup") {
-                    Toggle("Launch FocusGuard at login", isOn: $launchAtLogin)
+            VStack(alignment: .leading, spacing: 12) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Settings")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 4)
+
+                // Launch at Login Card
+                SettingsCard(
+                    icon: "power.circle.fill",
+                    iconColor: .blue,
+                    title: "Launch at Login",
+                    subtitle: "Start FocusGuard when you log in"
+                ) {
+                    Toggle("", isOn: $launchAtLogin)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .scaleEffect(0.85)
                         .onChange(of: launchAtLogin) { _, newValue in
                             toggleLaunchAtLogin(enabled: newValue)
                         }
-                        .padding(.vertical, 4)
                 }
 
-                // Password-Free Mode
-                GroupBox("Password-Free Mode") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if helperInstalled {
-                            HStack {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                                Text("Helper installed - no password needed!")
-                                    .foregroundColor(.green)
+                // Morning Prompt Card
+                SettingsCard(
+                    icon: "sun.horizon.fill",
+                    iconColor: .orange,
+                    title: "Morning Prompt",
+                    subtitle: "Daily productivity reminder"
+                ) {
+                    Toggle("", isOn: $morningPromptEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .scaleEffect(0.85)
+                        .onChange(of: morningPromptEnabled) { _, _ in saveSettings() }
+                }
+
+                // Time picker (shown when morning prompt enabled)
+                if morningPromptEnabled {
+                    HStack(spacing: 12) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.orange.opacity(0.7))
+                            .frame(width: 20)
+
+                        Text("Prompt at")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        Picker("", selection: $morningPromptHour) {
+                            ForEach(5..<12, id: \.self) { h in
+                                Text("\(h):00 AM").tag(h)
                             }
-                        } else {
-                            Text("Install a helper to block sites without password prompts")
-                                .font(.caption)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 100)
+                        .onChange(of: morningPromptHour) { _, _ in saveSettings() }
+
+                        Spacer()
+
+                        Button(action: {
+                            NotificationService.shared.testNotificationWithFeedback()
+                        }) {
+                            Text("Test")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.orange)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.orange.opacity(0.05))
+                    )
+                }
+
+                // Friction Delay Card
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.purple.opacity(0.2), Color.purple.opacity(0.1)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 36, height: 36)
+
+                            Image(systemName: "hourglass")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.purple)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Friction Delay")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.primary)
+                            Text("Countdown before removing blocks")
+                                .font(.system(size: 11))
                                 .foregroundColor(.secondary)
+                        }
 
-                            Button(action: installHelper) {
-                                if isInstallingHelper {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                } else {
-                                    Text("Install Helper")
+                        Spacer()
+                    }
+
+                    // Delay options
+                    HStack(spacing: 8) {
+                        ForEach([5, 10, 30], id: \.self) { seconds in
+                            DelayOptionButton(
+                                seconds: seconds,
+                                isSelected: frictionDelaySeconds == Int16(seconds),
+                                action: {
+                                    frictionDelaySeconds = Int16(seconds)
+                                    saveSettings()
                                 }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(isInstallingHelper)
+                            )
                         }
                     }
-                    .padding(.vertical, 4)
-                }
 
-                // Morning Prompt
-                GroupBox("Morning Productivity Prompt") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Toggle("Enable daily prompt", isOn: $morningPromptEnabled)
-                            .onChange(of: morningPromptEnabled) { _, _ in saveSettings() }
-
-                        if morningPromptEnabled {
-                            HStack {
-                                Text("Prompt time:")
-                                Picker("Hour", selection: $morningPromptHour) {
-                                    ForEach(5..<12, id: \.self) { h in
-                                        Text("\(h) AM").tag(h)
-                                    }
-                                }
-                                .frame(width: 100)
-                                .onChange(of: morningPromptHour) { _, _ in saveSettings() }
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                // Friction Delay
-                GroupBox("Friction Delay") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Countdown before disabling blocks")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        Picker("Delay", selection: $frictionDelaySeconds) {
-                            Text("5 seconds").tag(Int16(5))
-                            Text("10 seconds").tag(Int16(10))
-                            Text("30 seconds").tag(Int16(30))
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: frictionDelaySeconds) { _, _ in saveSettings() }
-
-                        Text("+ Required to type confirmation phrase")
-                            .font(.caption)
+                    HStack(spacing: 6) {
+                        Image(systemName: "keyboard.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.purple.opacity(0.6))
+                        Text("+ Type confirmation phrase to disable")
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.secondary)
                     }
-                    .padding(.vertical, 4)
                 }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color(NSColor.controlBackgroundColor))
+                        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                )
 
-                // Shame Stats
-                GroupBox("Shame Stats") {
-                    Toggle("Always show stats in menu bar", isOn: $showShameStats)
+                // Shame Stats Card
+                SettingsCard(
+                    icon: "chart.bar.fill",
+                    iconColor: .red,
+                    title: "Show Stats",
+                    subtitle: "Display bypass & wasted time stats"
+                ) {
+                    Toggle("", isOn: $showShameStats)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .scaleEffect(0.85)
                         .onChange(of: showShameStats) { _, _ in saveSettings() }
-                        .padding(.vertical, 4)
                 }
 
-                // Test Notifications
-                Button("Test Morning Prompt") {
-                    NotificationService.shared.testNotificationWithFeedback()
-                }
-                .buttonStyle(.bordered)
+                Spacer(minLength: 8)
 
-                Text("Settings are saved automatically")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // Footer
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.green.opacity(0.7))
+                    Text("Settings saved automatically")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
             }
             .padding()
         }
@@ -527,6 +612,123 @@ struct SettingsView: View {
                 alert.messageText = "Helper Installation Failed"
                 alert.informativeText = error
                 alert.runModal()
+            }
+        }
+    }
+}
+
+// MARK: - Settings Card Component
+
+struct SettingsCard<Content: View>: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let subtitle: String
+    let content: () -> Content
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(
+                        LinearGradient(
+                            colors: [iconColor.opacity(0.2), iconColor.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 36, height: 36)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(iconColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            content()
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Delay Option Button
+
+struct DelayOptionButton: View {
+    let seconds: Int
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Text("\(seconds)s")
+                .font(.system(size: 12, weight: isSelected ? .bold : .medium))
+                .foregroundColor(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isSelected ? Color.purple : (isHovered ? Color.purple.opacity(0.1) : Color.gray.opacity(0.1)))
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Tab Button
+
+struct TabButton: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(isSelected ? .white : (isHovered ? .purple : .secondary))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? Color.purple : (isHovered ? Color.purple.opacity(0.08) : Color.clear))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
             }
         }
     }

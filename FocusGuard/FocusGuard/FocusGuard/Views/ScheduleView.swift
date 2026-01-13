@@ -174,22 +174,16 @@ struct ScheduleRowView: View {
                 }
 
                 // Time range
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                     Image(systemName: "clock.fill")
                         .font(.system(size: 10))
                         .foregroundColor(.purple.opacity(0.7))
 
-                    Text("\(formatTime(hour: Int(schedule.startHour), minute: Int(schedule.startMinute)))")
+                    Text("\(formatTime(hour: Int(schedule.startHour), minute: Int(schedule.startMinute))) → \(formatTime(hour: Int(schedule.endHour), minute: Int(schedule.endMinute)))")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.primary.opacity(0.8))
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.secondary)
-
-                    Text("\(formatTime(hour: Int(schedule.endHour), minute: Int(schedule.endMinute)))")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.primary.opacity(0.8))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
 
                 // Days
