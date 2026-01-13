@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusGuard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      width: 320px;
+      background: #1a1a2e;
+      color: #fff;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header svg {
+      width: 32px;
+      height: 32px;
+      color: #1a1a2e;
+    }
+
+    .header h1 {
+      font-size: 1.2rem;
+      color: #1a1a2e;
+    }
+
+    .stats {
+      display: flex;
+      padding: 16px;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fc8181;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: #a0aec0;
+      text-transform: uppercase;
+    }
+
+    .section {
+      padding: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .section-title {
+      font-size: 0.85rem;
+      color: #a0aec0;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .add-site {
+      display: flex;
+      gap: 8px;
+    }
+
+    .add-site input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 0.9rem;
+    }
+
+    .add-site input::placeholder {
+      color: #718096;
+    }
+
+    .add-site button {
+      padding: 10px 16px;
+      background: #4facfe;
+      border: none;
+      border-radius: 8px;
+      color: #1a1a2e;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .add-site button:hover {
+      background: #00f2fe;
+    }
+
+    .blocked-list {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .blocked-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .blocked-item span {
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+
+    .blocked-item button {
+      background: transparent;
+      border: none;
+      color: #fc8181;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 4px;
+    }
+
+    .blocked-item button:hover {
+      color: #fff;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #718096;
+    }
+
+    .footer {
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #718096;
+    }
+
+    .footer a {
+      color: #4facfe;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1 14.59l-3.29-3.3 1.41-1.41L11 13.76l4.88-4.88 1.41 1.41L11 16.59z"/>
+    </svg>
+    <h1>FocusGuard</h1>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value" id="todayBypasses">0</div>
+      <div class="stat-label">Bypasses Today</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="weekBypasses">0</div>
+      <div class="stat-label">This Week</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Quick Block</div>
+    <div class="add-site">
+      <input type="text" id="newSite" placeholder="e.g., x.com">
+      <button id="addBtn">Add</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Blocked Sites</div>
+    <div class="blocked-list" id="blockedList">
+      <div class="empty-state">No sites blocked in extension</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="#">Open FocusGuard App</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

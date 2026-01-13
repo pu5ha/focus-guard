@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusGuard - Stop and Think</title>
+  <link rel="stylesheet" href="intervention.css">
+</head>
+<body>
+  <div class="container">
+    <div class="shield-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1 14.59l-3.29-3.3 1.41-1.41L11 13.76l4.88-4.88 1.41 1.41L11 16.59z"/>
+      </svg>
+    </div>
+
+    <h1>Wait a moment...</h1>
+
+    <p class="subtitle">You're about to visit <span id="domain" class="domain-highlight"></span></p>
+
+    <div class="stats-container">
+      <div class="stat-box warning">
+        <div class="stat-number" id="todayBypasses">0</div>
+        <div class="stat-label">Bypasses today</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number" id="weekBypasses">0</div>
+        <div class="stat-label">This week</div>
+      </div>
+    </div>
+
+    <div class="message-box" id="messageBox">
+      <p id="motivationalMessage">Is this really how you want to spend your time?</p>
+    </div>
+
+    <div class="actions">
+      <button id="blockBtn" class="btn btn-primary">
+        <span class="btn-icon">🛡️</span>
+        Block for 4 hours
+      </button>
+
+      <button id="blockRestOfDay" class="btn btn-secondary">
+        Block rest of day
+      </button>
+
+      <div class="bypass-section">
+        <button id="bypassBtn" class="btn btn-ghost">
+          Continue anyway (adds to bypass count)
+        </button>
+      </div>
+    </div>
+
+    <div class="streak-info" id="streakInfo">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <script src="intervention.js"></script>
+</body>
+</html>
