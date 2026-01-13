@@ -13,6 +13,7 @@ class ScheduleManager {
 
     private var scheduleTimer: Timer?
     private var activeScheduledBlocks: [UUID: WebsiteBlock] = [:]
+    private var failedActivations: Set<UUID> = [] // Track failed activations to avoid retrying
 
     private init() {}
 
@@ -59,9 +60,26 @@ class ScheduleManager {
                 let isCurrentlyActive = activeScheduledBlocks[scheduleId] != nil
 
                 if shouldBeActive && !isCurrentlyActive {
-                    activateScheduledBlock(schedule: schedule)
+                    // Only try to activate if we haven't already failed this session
+                    if !failedActivations.contains(scheduleId) {
+                        // Check if already blocked in hosts file to avoid unnecessary password prompts
+                        let blockedURLs = HostsFileManager.shared.getBlockedURLs()
+                        if blockedURLs.contains(schedule.url) || blockedURLs.contains("www.\(schedule.url)") {
+                            // Already blocked, just track it without prompting
+                            let block = DataService.shared.createScheduledBlock(url: schedule.url, schedule: schedule)
+                            activeScheduledBlocks[scheduleId] = block
+                            print("Scheduled block already active in hosts: \(schedule.url)")
+                        } else {
+                            activateScheduledBlock(schedule: schedule)
+                        }
+                    }
                 } else if !shouldBeActive && isCurrentlyActive {
                     deactivateScheduledBlock(schedule: schedule)
+                    // Clear failed status when time window ends
+                    failedActivations.remove(scheduleId)
+                } else if !shouldBeActive {
+                    // Clear failed status when outside time window
+                    failedActivations.remove(scheduleId)
                 }
             } else {
                 if activeScheduledBlocks[scheduleId] != nil {
@@ -104,9 +122,11 @@ class ScheduleManager {
             print("Scheduled block activated: \(schedule.url) until \(schedule.endHour):\(String(format: "%02d", schedule.endMinute))")
             NotificationCenter.default.post(name: .scheduledBlockActivated, object: schedule)
         } else {
-            print("Failed to activate scheduled block for \(schedule.url)")
+            print("Failed to activate scheduled block for \(schedule.url) - will not retry this session")
             DataService.shared.deactivateBlock(block)
             activeScheduledBlocks.removeValue(forKey: scheduleId)
+            // Mark as failed so we don't keep prompting for password
+            failedActivations.insert(scheduleId)
         }
     }
 
