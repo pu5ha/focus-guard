@@ -537,40 +537,56 @@ struct BlockRowView: View {
     let onRemove: () -> Void
     @State private var isHovered = false
 
+    private var accentColor: Color {
+        block.isScheduled ? .purple : .red
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             // Website icon
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(block.isScheduled ? Color.blue.opacity(0.15) : Color.red.opacity(0.15))
-                    .frame(width: 40, height: 40)
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        LinearGradient(
+                            colors: [accentColor.opacity(0.2), accentColor.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 44, height: 44)
 
                 Image(systemName: block.isScheduled ? "calendar.badge.clock" : "globe")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(block.isScheduled ? .blue : .red)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(accentColor)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(block.url)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
 
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     if block.isScheduled {
-                        Text("Scheduled")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(4)
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock.arrow.2.circlepath")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("SCHEDULED")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(Color.purple)
+                        )
                     }
 
-                    HStack(spacing: 3) {
-                        Image(systemName: "clock")
-                            .font(.system(size: 10))
+                    HStack(spacing: 4) {
+                        Image(systemName: "timer")
+                            .font(.system(size: 10, weight: .medium))
                         Text(block.remainingTimeString)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundColor(.secondary)
                 }
@@ -580,8 +596,8 @@ struct BlockRowView: View {
 
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(isHovered ? .red : .gray.opacity(0.5))
+                    .font(.system(size: 22))
+                    .foregroundColor(isHovered ? .red : .gray.opacity(0.4))
             }
             .buttonStyle(.plain)
             .onHover { hovering in
@@ -590,16 +606,18 @@ struct BlockRowView: View {
                 }
             }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(NSColor.controlBackgroundColor))
-                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+            RoundedRectangle(cornerRadius: 14)
+                .fill(block.isScheduled
+                    ? Color.purple.opacity(0.06)
+                    : Color(NSColor.controlBackgroundColor))
+                .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 2)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(block.isScheduled ? Color.purple.opacity(0.3) : Color.gray.opacity(0.1), lineWidth: block.isScheduled ? 1.5 : 1)
         )
     }
 }
