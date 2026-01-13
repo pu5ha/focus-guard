@@ -198,44 +198,50 @@ struct MenuBarView: View {
 
             // Custom duration picker
             if showCustomDuration && !viewModel.newURL.isEmpty {
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
+                VStack(spacing: 16) {
+                    HStack(spacing: 24) {
+                        VStack(alignment: .leading, spacing: 6) {
                             Text("Hours")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Picker("Hours", selection: $customHours) {
+                                .font(.caption.bold())
+                                .foregroundColor(.primary)
+                            Picker("", selection: $customHours) {
                                 ForEach(0..<24, id: \.self) { h in
-                                    Text("\(h)").tag(h)
+                                    Text("\(h) hr").tag(h)
                                 }
                             }
+                            .labelsHidden()
                             .pickerStyle(.menu)
-                            .frame(width: 80)
-                            .background(Color.primary.opacity(0.1))
-                            .cornerRadius(6)
+                            .frame(minWidth: 90)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.white)
+                            .cornerRadius(8)
+                            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
                         }
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 6) {
                             Text("Minutes")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Picker("Minutes", selection: $customMinutes) {
+                                .font(.caption.bold())
+                                .foregroundColor(.primary)
+                            Picker("", selection: $customMinutes) {
                                 ForEach([0, 15, 30, 45], id: \.self) { m in
-                                    Text("\(m)").tag(m)
+                                    Text("\(m) min").tag(m)
                                 }
                             }
+                            .labelsHidden()
                             .pickerStyle(.menu)
-                            .frame(width: 80)
-                            .background(Color.primary.opacity(0.1))
-                            .cornerRadius(6)
+                            .frame(minWidth: 90)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.white)
+                            .cornerRadius(8)
+                            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
                         }
 
                         Spacer()
-
-                        Text("\(customHours)h \(customMinutes)m")
-                            .font(.headline)
-                            .foregroundColor(.blue)
                     }
+
+                    Divider()
 
                     HStack {
                         Button("Cancel") {
@@ -245,7 +251,14 @@ struct MenuBarView: View {
 
                         Spacer()
 
-                        Button("Block for \(customHours)h \(customMinutes)m") {
+                        Text("Block for:")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text("\(customHours)h \(customMinutes)m")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.blue)
+
+                        Button("Block") {
                             let duration = TimeInterval(customHours * 3600 + customMinutes * 60)
                             if duration > 0 {
                                 _ = BlockingService.shared.activateBlock(url: viewModel.newURL, duration: duration)
@@ -257,12 +270,12 @@ struct MenuBarView: View {
                         .disabled(customHours == 0 && customMinutes == 0)
                     }
                 }
-                .padding(12)
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(10)
+                .padding(16)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(12)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                 )
             }
         }
