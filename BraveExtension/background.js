@@ -187,11 +187,13 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     const timeLimitInfo = getTimeLimitInfo(domain);
 
     // Redirect to intervention page
+    // weekBypasses only includes previous days, so add todayBypasses for total this week
+    const totalWeekBypasses = currentStats.weekBypasses + currentStats.todayBypasses;
     const interventionURL = chrome.runtime.getURL('intervention.html') +
       '?url=' + encodeURIComponent(details.url) +
       '&domain=' + encodeURIComponent(domain) +
       '&todayBypasses=' + currentStats.todayBypasses +
-      '&weekBypasses=' + currentStats.weekBypasses +
+      '&weekBypasses=' + totalWeekBypasses +
       '&reason=' + (timeLimitExceeded ? 'timelimit' : 'blocked') +
       '&limitMinutes=' + timeLimitInfo.limitMinutes +
       '&usedMinutes=' + timeLimitInfo.usedMinutes;
@@ -235,11 +237,13 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const currentStats = await getCurrentStats();
     const timeLimitInfo = getTimeLimitInfo(domain);
 
+    // weekBypasses only includes previous days, so add todayBypasses for total this week
+    const totalWeekBypasses = currentStats.weekBypasses + currentStats.todayBypasses;
     const interventionURL = chrome.runtime.getURL('intervention.html') +
       '?url=' + encodeURIComponent(changeInfo.url) +
       '&domain=' + encodeURIComponent(domain) +
       '&todayBypasses=' + currentStats.todayBypasses +
-      '&weekBypasses=' + currentStats.weekBypasses +
+      '&weekBypasses=' + totalWeekBypasses +
       '&reason=' + (timeLimitExceeded ? 'timelimit' : 'blocked') +
       '&limitMinutes=' + timeLimitInfo.limitMinutes +
       '&usedMinutes=' + timeLimitInfo.usedMinutes;
@@ -336,6 +340,8 @@ async function logUsage(domain, seconds) {
     console.log(`Time limit exceeded for ${cleanDomain}`);
     // Get fresh stats and redirect tabs
     const currentStats = await getCurrentStats();
+    // weekBypasses only includes previous days, so add todayBypasses for total this week
+    const totalWeekBypasses = currentStats.weekBypasses + currentStats.todayBypasses;
     // Close any tabs on this domain or redirect to intervention
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach((tab) => {
@@ -345,7 +351,7 @@ async function logUsage(domain, seconds) {
             '?url=' + encodeURIComponent(tab.url) +
             '&domain=' + encodeURIComponent(cleanDomain) +
             '&todayBypasses=' + currentStats.todayBypasses +
-            '&weekBypasses=' + currentStats.weekBypasses +
+            '&weekBypasses=' + totalWeekBypasses +
             '&reason=timelimit' +
             '&limitMinutes=' + timeLimitInfo.limitMinutes +
             '&usedMinutes=' + timeLimitInfo.usedMinutes;
