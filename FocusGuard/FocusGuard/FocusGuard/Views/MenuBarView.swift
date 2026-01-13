@@ -52,71 +52,90 @@ struct MenuBarView: View {
     }
 
     private var headerView: some View {
-        HStack {
-            Image(systemName: "shield.fill")
-                .foregroundColor(.blue)
-            Text("FocusGuard")
-                .font(.headline)
+        HStack(spacing: 12) {
+            // App icon with gradient background
+            ZStack {
+                LinearGradient(
+                    colors: [.blue, .blue.opacity(0.7)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(width: 36, height: 36)
+                .cornerRadius(10)
+
+                Image(systemName: "shield.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("FocusGuard")
+                    .font(.system(size: 16, weight: .bold))
+                Text("Stay focused, stay productive")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
 
             Spacer()
 
             Button(action: { NSApplication.shared.terminate(nil) }) {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.gray)
+                    .font(.system(size: 18))
+                    .foregroundColor(.gray.opacity(0.6))
             }
             .buttonStyle(.plain)
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(
+            LinearGradient(
+                colors: [Color(NSColor.controlBackgroundColor), Color(NSColor.controlBackgroundColor).opacity(0.95)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
 
     // Always visible shame stats
     private var shameStatsBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 0) {
             // Bypass count
-            HStack(spacing: 4) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(viewModel.todayStats.bypassCount > 0 ? .orange : .gray)
-                Text("\(viewModel.todayStats.bypassCount)")
-                    .fontWeight(.bold)
-                    .foregroundColor(viewModel.todayStats.bypassCount > 0 ? .orange : .secondary)
-                Text("bypasses")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Divider()
-                .frame(height: 16)
+            StatCard(
+                icon: "exclamationmark.triangle.fill",
+                value: "\(viewModel.todayStats.bypassCount)",
+                label: "Bypasses",
+                color: viewModel.todayStats.bypassCount > 0 ? .orange : .gray,
+                isWarning: viewModel.todayStats.bypassCount > 0
+            )
 
             // Time wasted
-            HStack(spacing: 4) {
-                Image(systemName: "clock.fill")
-                    .foregroundColor(viewModel.todayStats.totalWastedMinutes > 0 ? .red : .gray)
-                Text("\(viewModel.todayStats.totalWastedMinutes)m")
-                    .fontWeight(.bold)
-                    .foregroundColor(viewModel.todayStats.totalWastedMinutes > 0 ? .red : .secondary)
-                Text("wasted")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Divider()
-                .frame(height: 16)
+            StatCard(
+                icon: "clock.fill",
+                value: "\(viewModel.todayStats.totalWastedMinutes)m",
+                label: "Wasted",
+                color: viewModel.todayStats.totalWastedMinutes > 0 ? .red : .gray,
+                isWarning: viewModel.todayStats.totalWastedMinutes > 0
+            )
 
             // Blocks activated
-            HStack(spacing: 4) {
-                Image(systemName: "checkmark.shield.fill")
-                    .foregroundColor(.green)
-                Text("\(viewModel.todayStats.blocksActivated)")
-                    .fontWeight(.bold)
-                    .foregroundColor(.green)
-                Text("blocked")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            StatCard(
+                icon: "checkmark.shield.fill",
+                value: "\(viewModel.todayStats.blocksActivated)",
+                label: "Blocked",
+                color: .green,
+                isWarning: false
+            )
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(Color.black.opacity(0.05))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(NSColor.windowBackgroundColor).opacity(0.5))
     }
 
     // MARK: - Blocks Tab
@@ -148,21 +167,30 @@ struct MenuBarView: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "shield.slash")
-                .font(.system(size: 48))
-                .foregroundColor(.gray)
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 80, height: 80)
 
-            Text("No Active Blocks")
-                .font(.headline)
+                Image(systemName: "shield.slash")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundColor(.blue.opacity(0.6))
+            }
 
-            Text("Add websites below to start blocking distractions")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+            VStack(spacing: 6) {
+                Text("No Active Blocks")
+                    .font(.system(size: 16, weight: .semibold))
+
+                Text("Add websites below to start\nblocking distractions")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, 36)
     }
 
     @State private var showCustomDuration = false
@@ -170,15 +198,40 @@ struct MenuBarView: View {
     @State private var customMinutes: Int = 0
 
     private var quickActionsView: some View {
-        VStack(spacing: 8) {
-            // URL input
+        VStack(spacing: 12) {
+            // Section header
             HStack {
-                TextField("Enter website (e.g., x.com)", text: $viewModel.newURL)
-                    .textFieldStyle(.roundedBorder)
+                Text("Quick Block")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+            }
+
+            // URL input
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+
+                    TextField("Enter website (e.g., x.com)", text: $viewModel.newURL)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 13))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
 
                 Button(action: { viewModel.addBlock() }) {
                     Image(systemName: "plus.circle.fill")
-                        .foregroundColor(.blue)
+                        .font(.system(size: 24))
+                        .foregroundColor(viewModel.newURL.isEmpty ? .gray.opacity(0.4) : .blue)
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.newURL.isEmpty)
@@ -482,24 +535,44 @@ struct SettingsView: View {
 struct BlockRowView: View {
     let block: WebsiteBlock
     let onRemove: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            // Website icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(block.isScheduled ? Color.blue.opacity(0.15) : Color.red.opacity(0.15))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: block.isScheduled ? "calendar.badge.clock" : "globe")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(block.isScheduled ? .blue : .red)
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(block.url)
-                    .font(.system(.body, design: .monospaced))
-                    .fontWeight(.medium)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     if block.isScheduled {
-                        Label("Scheduled", systemImage: "calendar")
-                            .font(.caption)
+                        Text("Scheduled")
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.blue)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(4)
                     }
 
-                    Label(block.remainingTimeString, systemImage: "clock")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 10))
+                        Text(block.remainingTimeString)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(.secondary)
                 }
             }
 
@@ -507,14 +580,60 @@ struct BlockRowView: View {
 
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.red)
+                    .font(.system(size: 20))
+                    .foregroundColor(isHovered ? .red : .gray.opacity(0.5))
             }
             .buttonStyle(.plain)
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isHovered = hovering
+                }
+            }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+        )
+    }
+}
+
+struct StatCard: View {
+    let icon: String
+    let value: String
+    let label: String
+    let color: Color
+    let isWarning: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(isWarning ? color : .primary)
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isWarning ? color.opacity(0.08) : Color.clear)
+        )
     }
 }
 
@@ -543,15 +662,31 @@ struct QuickBlockButton: View {
     let title: String
     let duration: TimeInterval
     @Binding var url: String
+    @State private var isHovered = false
 
     var body: some View {
-        Button(title) {
+        Button(action: {
             guard !url.isEmpty else { return }
             _ = BlockingService.shared.activateBlock(url: url, duration: duration)
             url = ""
+        }) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(url.isEmpty ? Color.gray : (isHovered ? Color.blue.opacity(0.8) : Color.blue))
+                )
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.plain)
         .disabled(url.isEmpty)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
     }
 }
 
